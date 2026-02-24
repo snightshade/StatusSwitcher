@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -18,7 +18,7 @@ public static class Program
     private static DiscordClient Discord = null!;
     private static Config CurrentConfig = null!;
     private static Version CurrentVersion = Assembly.GetExecutingAssembly().GetName().Version!;
-    
+
     private static List<Member> LoadedMembers = new();
 
     private class Member
@@ -39,7 +39,7 @@ public static class Program
         // Channel to log switches to
         public ulong LogChannel = 0;
     }
-    
+
     public static async Task Main(string[] args)
     {
         var configPath = Environment.GetEnvironmentVariable("CONFIG_PATH")
@@ -50,7 +50,7 @@ public static class Program
         // Beats me, but Newtonsoft.Json works fine. ~Madoka
         var config = JsonConvert.DeserializeObject<Config>(configFile)!;
         CurrentConfig = config;
-        
+
         // Let's populate the member map now
         await PopulateMemberMap();
 
@@ -85,24 +85,24 @@ public static class Program
     {
         var stopwatch = Stopwatch.GetTimestamp();
         Console.WriteLine("Loading members from PK api, this might take a while");
-        
+
         var reqString = await "https://api.pluralkit.me/v2/systems/@me/members"
             .WithHeader("User-Agent",  $"StatusSwitcher/{CurrentVersion}")
             .WithHeader("Accept", "application/json")
             .WithHeader("Authorization", CurrentConfig.PluralKitToken)
             .GetStringAsync();
-        
+
         // Again, System.Text.Json doesn't seem to do so well with Unicode codepoints.
         // Also, I can't seem to deserialise into a Dictionary, so dynamic it is.
         var req = JsonConvert.DeserializeObject<List<dynamic>>(reqString);
-        
+
         var timeAfter = Stopwatch.GetElapsedTime(stopwatch);
         Console.WriteLine($"PK API took {timeAfter.TotalSeconds} seconds to respond");
-        
+
         // i could try some bullshit to match on specifically one codepoint but like, no
         // fuck unicode, that shit isn't worth the trouble
         var re = new Regex(@"\[status-switch-emote=(.+)\]");
-        
+
         foreach (var key in req!)
         {
             var id = (string)key["id"];
@@ -124,7 +124,7 @@ public static class Program
                 });
             }
         }
-        
+
         Console.WriteLine($"Now tracking {LoadedMembers.Count} members.");
     }
 
@@ -138,14 +138,14 @@ public static class Program
         // read the user's custom status
         var user = await Discord.GetUserAsync(CurrentConfig.UserID);
         var presence = user.Presence.Activity.CustomStatus.Emoji;
-        
+
         // if we don't match, ignore the switch (just return and do nothing)
         if (presence.Name != _emote) return;
-        
+
         // rest proceeds as normal, find the member and hit the API etc etc
         var member = LoadedMembers.FirstOrDefault(e => e.Emote == _emote);
         if (member == null) return;
-        
+
         Console.WriteLine($"Switching to {member.Name} [{member.Id}]");
 
         try
@@ -162,14 +162,14 @@ public static class Program
         catch (FlurlHttpException e)
         {
             if (e.StatusCode != 400) throw;
-            
+
             var res = await e.GetResponseJsonAsync<Dictionary<string, JsonElement>>();
             if (!res.ContainsKey("code")) throw;
             var code = res["code"].GetInt32();
-            
+
             // 40004 = 'Member list identical to current fronter list.'
             if (code != 40004) throw;
-            
+
             Console.WriteLine("w: tried to register identical switch, ignoring");
             return;
         }
@@ -183,7 +183,7 @@ public static class Program
     private static async Task OnPresenceUpdate(DiscordClient _, PresenceUpdateEventArgs args)
     {
         if (args.User.Id != CurrentConfig.UserID) return;
-        
+
         // make a note of the emote the presence update delivered
         var emote = args.PresenceAfter.Activity.CustomStatus.Emoji.Name;
         _emote = emote;
