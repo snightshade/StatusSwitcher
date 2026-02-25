@@ -19,5 +19,6 @@ Please see `SETUP.md`.
   - When switching from one client to another, sometimes the bot will rapidly register multiple switches.
   - **This is caused by Discord attempting to sync presence updates across clients, and is not something I can do anything about.** The bot simply receives multiple presence update events, and it has no way of knowing which is "real", so it registers multiple switches.
   - Yeah, I have no idea why it works this way either.
+  - In the future, I'll attempt to implement an "anti-flicker" mechanism, via waiting for state to settle before performing the update. I don't know how long away that will be.
 - Needing to provide your PluralKit token
   - This is so the bot can fetch information from private members. In future, if I find the motivation, I'll add an option to just run with a public system ID (but with the limitation that it will, obviously, not be able to see data from members marked private).
