@@ -10,8 +10,6 @@ using Newtonsoft.Json;
 namespace StatusSwitcher;
 
 // StatusSwitcher - register switches in the PluralKit API automatically
-// Written by Madoka (Nightshade System) 4/1/2024
-// refactored by sayaka (nightshade system) 29/04/2024
 
 public static class Program
 {
@@ -46,8 +44,7 @@ public static class Program
                          ?? throw new Exception("CONFIG_PATH unset");
 
         var configFile = await File.ReadAllTextAsync(configPath);
-        // System.Text.Json here does not deserialise the config properly.
-        // Beats me, but Newtonsoft.Json works fine. ~Madoka
+        // TODO: switch to System.Text.Json
         var config = JsonConvert.DeserializeObject<Config>(configFile)!;
         CurrentConfig = config;
 
@@ -92,15 +89,11 @@ public static class Program
             .WithHeader("Authorization", CurrentConfig.PluralKitToken)
             .GetStringAsync();
 
-        // Again, System.Text.Json doesn't seem to do so well with Unicode codepoints.
-        // Also, I can't seem to deserialise into a Dictionary, so dynamic it is.
         var req = JsonConvert.DeserializeObject<List<dynamic>>(reqString);
 
         var timeAfter = Stopwatch.GetElapsedTime(stopwatch);
         Console.WriteLine($"PK API took {timeAfter.TotalSeconds} seconds to respond");
 
-        // i could try some bullshit to match on specifically one codepoint but like, no
-        // fuck unicode, that shit isn't worth the trouble
         var re = new Regex(@"\[status-switch-emote=(.+)\]");
 
         foreach (var key in req!)
@@ -128,11 +121,12 @@ public static class Program
         Console.WriteLine($"Now tracking {LoadedMembers.Count} members.");
     }
 
+    // TODO: implement a better anti-flicker mechanism
     private static string? _emote;
 
     private static async Task DoSwitchTask()
     {
-        // wait ~a second, that should be enough time for state between clients to settle
+        // XXX: this line makes no sense
         await Task.Delay(1000);
 
         // read the user's custom status
